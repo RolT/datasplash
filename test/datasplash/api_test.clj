@@ -36,6 +36,17 @@
           acc
           (recur (conj acc line)))))))
 
+(def passert (constantly true))
+
+(defmethod assert-expr 'passert [msg form]
+  `(try ~form
+        (do-report {:type :pass :message ~msg :expected '~form :actual true})
+        (catch org.apache.beam.sdk.Pipeline$PipelineExecutionException e#
+          (let [[pcoll# expected# but#] (str/split (:message (bean (.getCause e#))) #"\n")]
+            (do-report {:type :fail :message (str/join ": in " (filter not-empty [~msg pcoll#]))
+                        :expected expected#
+                        :actual (str/trim but#)})))))
+
 (defn make-test-pipeline
   []
   (let [p (TestPipeline/create)
